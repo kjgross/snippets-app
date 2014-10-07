@@ -1,11 +1,10 @@
 # This script reads and writes to csv files.
 # Given a name or a snippet, it can find and print out that particular row.
 # Given a name and a snippet, it can write a new row
-# Given a snippet, it can search for the existing row to update it
+# Given a snippet, it can search for the existing row to update it or append a change to the end.
 
 ## QUESTIONS:
-#1. How do I make my update a replace instead of an append?
-#2. Why do we include the format(name,snippet) in the logging.debug line (line 25)?
+#1. How do I make my update a replace instead of an append? DONE! Compare Update to Update2
 
 import logging
 import csv
@@ -22,7 +21,7 @@ def put(name, snippet, filename):
 	logging.debug("Opening file")
 	with open(filename, "a") as f:
 		writer = csv.writer(f)
-		logging.debug("Writing snippet to file".format(name, snippet))
+		logging.debug("Writing snippet to file")
 		writer.writerow([name,snippet])
 	logging.debug("Write successful")
 	return name, snippet
@@ -34,7 +33,7 @@ def get(name, filename):
 	logging.debug("Opening file")
 	with open(filename, "r+") as f:
 		reader = csv.reader(f)
-		logging.debug("Reading name/snippet from file".format(name))
+		logging.debug("Reading name/snippet from file")
 		in_file = False
 		for row in reader:
 			if str(row[0]) == name:
@@ -52,7 +51,7 @@ def search(snippet_portion, filename):
 	logging.debug("Opening file")
 	with open(filename, "r+") as f:
 		reader = csv.reader(f)
-		logging.debug("Searching for".format(snippet_portion))
+		logging.debug("Searching for")
 		in_file = False
 		for row in reader:
 			if str(row[1]) == snippet_portion:
@@ -71,19 +70,43 @@ def update(snippet_original, filename):
 	with open(filename, "r+") as f:
 		reader = csv.reader(f)
 		writer = csv.writer(f)
-		logging.debug("Searching for".format(snippet_original))
+		logging.debug("Searching for '{}'".format(snippet_original))
 		in_file = False
 		for row in reader:
 			if str(row[1]) == snippet_original:
 				in_file = True
 				print row
-				new_text = raw_input("Insert new snippet text")
+				new_text = raw_input("Insert new snippet text: ")
 				row = writer.writerow([str(row[0]), new_text])
 				print row
 		if in_file == False:
 			print "That's not in this file"
 	logging.debug("Search complete")
 	return snippet_original, filename	
+
+def update2(snippet_original, filename, change):
+## THIS REPLACES, NOT APPENDS
+	"""Read in the file to a dictionary, make any changes, spit out new stuff from memory"""
+	logging.info("Reading {} from {}".format(snippet_original, filename))
+	logging.debug("Opening file")
+	with open(filename, "r+") as f:
+		reader = csv.reader(f)
+		logging.debug("Reading name/snippet from file")
+		in_file = False
+		mydict = {}
+		for row in reader:
+			if snippet_original != str(row[1]):
+				mydict.update({row[0]: row[1]})
+			else:
+				mydict.update({row[0]: change})
+		print mydict.keys()
+	with open(filename, "w") as f:
+		writer = csv.writer(f)
+		for key in mydict:
+			writer.writerow([str(key),str(mydict[key])])
+	logging.debug("Read successful")
+	return snippet_original, filename
+		
 
 
 def make_parser():
@@ -115,11 +138,20 @@ def make_parser():
 	search_parser.add_argument("filename", default="snippets.csv", nargs="?", 
 		help="The Snippet filename")
 
+	# Subparser for the update command
 	logging.debug("Constructing update subparser")
-	search_parser = subparsers.add_parser("update", help="Search for a snippet")
-	search_parser.add_argument("snippet_original", help="The snippet you're searching for")
-	search_parser.add_argument("filename", default="snippets.csv", nargs="?", 
+	update_parser = subparsers.add_parser("update", help="Search for a snippet")
+	update_parser.add_argument("snippet_original", help="The snippet you're searching for")
+	update_parser.add_argument("filename", default="snippets.csv", nargs="?", 
 		help="The Snippet filename")
+
+	# Subparser for the update2 command
+	logging.debug("Constructing update2 subparser")
+	update2_parser = subparsers.add_parser("update2", help="Search for a snippet")
+	update2_parser.add_argument("snippet_original", help="The snippet you're searching for")
+	update2_parser.add_argument("filename", default="snippets.csv", nargs="?", 
+		help="The Snippet filename")
+	update2_parser.add_argument("change", help="The snippet you want to change it to")
 
 	return parser
 
@@ -148,9 +180,14 @@ def main():
 	elif command == "update":
 		snippet_original, filename = update(**arguments)
 		print "Searching for '{}' in '{}', then updating".format(snippet_original, filename)
+	elif command == "update2":
+		snippet_original, filename = update2(**arguments)
+		print "update2 for '{}'' in '{}'".format(snippet_original, filename)
 
 
 if __name__ == "__main__":
 	main()
+
+
 
 
